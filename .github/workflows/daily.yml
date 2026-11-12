@@ -1,0 +1,32 @@
+name: daily
+
+# Thin caller. The steps live in a composite action inside the code repository,
+# which is checked out into the workspace root first.
+# No schedule trigger: runs are dispatched externally or by hand.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  daily-routine:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.CODE_REPO || github.repository }}
+          ssh-key: ${{ secrets.CODE_DEPLOY_KEY }}
+
+      - name: Run
+        uses: ./.github/actions/daily
+        with:
+          credentials_json: ${{ secrets.CREDENTIALS_JSON }}
+          telegram_bot_token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          telegram_chat_id: ${{ secrets.TELEGRAM_CHAT_ID }}
+          claude_routine_url: ${{ secrets.CLAUDE_ROUTINE_URL }}
+          claude_routine_token: ${{ secrets.CLAUDE_ROUTINE_TOKEN }}
+          artifact_passphrase: ${{ secrets.ARTIFACT_PASSPHRASE }}

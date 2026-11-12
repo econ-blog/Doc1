@@ -1,0 +1,68 @@
+name: manual
+
+# Thin caller. The steps live in a composite action inside the code repository,
+# which is checked out into the workspace root first.
+# Runs exactly one task per dispatch.
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: "Task to run"
+        type: choice
+        required: true
+        default: "quiz"
+        options:
+          - "quiz"
+          - "apply"
+          - "live"
+          - "survey"
+          - "recon"
+      stay_seconds:
+        description: "Stay duration in seconds (task live only)"
+        type: string
+        default: "5"
+      ignore_state:
+        description: "Ignore saved state and try everything (task live only)"
+        type: boolean
+        default: false
+      send_table:
+        description: "Send the result table when done (tasks apply, live, survey)"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+# Shares state with the block workflow, so the two must never run at the same time.
+concurrency:
+  group: seminar-block
+  cancel-in-progress: false
+
+jobs:
+  manual-run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      # Check out the branch tip at job start, not the commit at dispatch time:
+      # a run that waited in the concurrency queue must see the commits of the run before it.
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.CODE_REPO || github.repository }}
+          ssh-key: ${{ secrets.CODE_DEPLOY_KEY }}
+          ref: ${{ github.ref_name }}
+
+      - name: Run
+        uses: ./.github/actions/manual
+        with:
+          task: ${{ inputs.task }}
+          stay_seconds: ${{ inputs.stay_seconds }}
+          ignore_state: ${{ inputs.ignore_state }}
+          send_table: ${{ inputs.send_table }}
+          credentials_json: ${{ secrets.CREDENTIALS_JSON }}
+          telegram_bot_token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          telegram_chat_id: ${{ secrets.TELEGRAM_CHAT_ID }}
+          claude_routine_url: ${{ secrets.CLAUDE_ROUTINE_URL }}
+          claude_routine_token: ${{ secrets.CLAUDE_ROUTINE_TOKEN }}
+          artifact_passphrase: ${{ secrets.ARTIFACT_PASSPHRASE }}
